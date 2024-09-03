@@ -63,7 +63,7 @@ The script performs a thorough security audit and applies basic hardening measur
 
 ### Usage
 
-1. Save the script as `security_audit.sh`.
-2. Make it executable: `chmod +x security_audit.sh`
-3. Run the script with sudo privileges: `sudo ./security_audit.sh`
+1. Save the script as `server_hardening.sh`.
+2. Make it executable: `chmod +x server_hardening.sh`
+3. Run the script with sudo privileges: `sudo ./server_hardening.sh`
 

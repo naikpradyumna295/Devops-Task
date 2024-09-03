@@ -42,8 +42,12 @@ display_active_processes() {
 monitor_services() {
     echo "Service Monitoring:"
     for service in sshd nginx iptables; do
-        status=$(systemctl is-active $service)
-        echo "$service: $status"
+        if systemctl list-unit-files | grep -q "^${service}.service"; then
+            status=$(systemctl is-active $service)
+            echo "$service: $status"
+        else
+            echo "$service: not installed"
+        fi
     done
 }
 
