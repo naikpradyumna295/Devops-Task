@@ -1,81 +1,51 @@
 #!/bin/bash
 
-# Function to display top 10 applications by CPU and memory usage
-display_cpu_memory() {
-    echo "Top 10 Applications by CPU and Memory Usage:"
-    ps -eo pid,user,%cpu,%mem,command --sort=-%cpu | head -n 11
-}
+echo "Top 10 Applications by CPU and Memory Usage:"
+ps aux --sort=-%cpu,-%mem | head -n 11
 
-# Function to display memory usage
-display_memory_usage() {
-    echo "Memory Usage:"
-    free -h
-}
+echo "Memory Usage:"
+free -m
 
-# Function to display network statistics
-display_network_stats() {
-    echo "Network Statistics:"
-    echo "Concurrent Connections: $(netstat -an | grep ESTABLISHED | wc -l)"
-    echo "Packet Drops:"
-    ifstat -t 1 1 | tail -n 1 | awk '{print "Packets In: "$6" Packets Out: "$8}'
-}
+echo "Network Statistics:"
+if command -v ss &> /dev/null; then
+    echo "Concurrent Connections:"
+    ss -s | grep "TCP:"
+else
+    echo "ss command not found. Install iproute2 package for network statistics."
+fi
 
-# Function to display disk usage by mounted partitions
-display_disk_usage() {
-    echo "Disk Usage by Mounted Partitions:"
-    df -h | grep '^/dev/'
-}
+echo "Packet Drops:"
+if command -v ifconfig &> /dev/null; then
+    ifconfig | grep -i "RX packets" | awk '{print $6 " " $7 " " $8 " " $9 " " $10}'
+elif command -v ip &> /dev/null; then
+    ip -s link | grep -A 1 "RX:" | grep -v "RX:" | awk '{print $4 " drops"}'
+else
+    echo "Neither ifconfig nor ip command found. Install net-tools or iproute2 package."
+fi
 
-# Function to display system load
-display_system_load() {
-    echo "System Load:"
-    uptime
-    mpstat -P ALL 1 1
-}
+echo "Disk Usage by Mounted Partitions:"
+df -h
 
-# Function to display active processes
-display_active_processes() {
-    echo "Active Processes: $(ps aux | wc -l)"
-}
+echo "System Load:"
+uptime
 
-# Function to monitor essential services
-monitor_services() {
-    echo "Service Monitoring:"
-    for service in sshd nginx iptables; do
-        if systemctl list-unit-files | grep -q "^${service}.service"; then
-            status=$(systemctl is-active $service)
-            echo "$service: $status"
-        else
-            echo "$service: not installed"
-        fi
-    done
-}
+echo "CPU Utilization:"
+if command -v mpstat &> /dev/null; then
+    mpstat 1 1
+else
+    echo "mpstat command not found. Install sysstat package for CPU utilization."
+fi
 
-# Handle command-line arguments to display specific dashboard sections
-case "$1" in
-    --cpu)
-        display_cpu_memory
-        ;;
-    --memory)
-        display_memory_usage
-        ;;
-    --network)
-        display_network_stats
-        ;;
-    --disk)
-        display_disk_usage
-        ;;
-    --load)
-        display_system_load
-        ;;
-    --processes)
-        display_active_processes
-        ;;
-    --services)
-        monitor_services
-        ;;
-    *)
-        echo "Usage: $0 {--cpu|--memory|--network|--disk|--load|--processes|--services}"
-        ;;
-esac
+echo "Active Processes:" $(ps -e | wc -l)
 
+echo "Service Monitoring:"
+services=("sshd" "nginx" "iptables")
+for service in "${services[@]}"; do
+    if systemctl is-active --quiet $service; then
+        echo "$service: active"
+    elif systemctl is-enabled --quiet $service; then
+        echo "$service: enabled but not active"
+    else
+        echo "$service: not installed or not enabled"
+    fi
+done
